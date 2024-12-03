@@ -1,2 +1,2 @@
 # really-simple-disable-comments
-Completely disable comments functionality across the entire WordPress site
+Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
