@@ -171,7 +171,7 @@ class ReallySimpleDisableComments {
         ');
         
         do_action('rsdc_before_hide_ui');
-        echo '<style>' . $styles . '</style>';
+        echo '<style>' . esc_html($styles) . '</style>';
         do_action('rsdc_after_hide_ui');
     }
     
