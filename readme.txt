@@ -1,16 +1,20 @@
-# Really Simple Disable Comments
-
-[![WordPress](https://img.shields.io/wordpress/v/really-simple-disable-comments.svg)](https://wordpress.org/plugins/really-simple-disable-comments/)
-[![PHP](https://img.shields.io/badge/php-%3E%3D7.0-8892BF.svg)](https://php.net/)
-[![License](https://img.shields.io/badge/license-GPL--2.0%2B-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
+=== Really Simple Disable Comments ===
+Contributors: nextfly
+Tags: comments, disable comments, disable trackbacks, disable pingbacks
+Requires at least: 5.0
+Tested up to: 6.7.1
+Stable tag: 0.1.0
+Requires PHP: 7.0
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
 
-## Description
+== Description ==
 
 Really Simple Disable Comments is a lightweight plugin that completely disables WordPress comments functionality with a single activation. No configuration needed!
 
-### Features
+= Features =
 
 * Disables comments on all post types
 * Removes comment-related UI elements
@@ -19,7 +23,7 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Disables all comment-related Gutenberg blocks
 * Clean and efficient code with no settings required
 
-### What Gets Disabled?
+= What Gets Disabled? =
 
 * Comment forms and displays
 * Admin menu items and dashboard widgets
@@ -27,7 +31,7 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Trackbacks and pingbacks
 * Comment-related UI elements in themes
 
-### Developer Friendly
+= Developer Friendly =
 
 The plugin includes various filters and actions for developers to customize its behavior:
 
@@ -38,35 +42,32 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_block_editor_settings` - Filter the block editor settings
 * `rsdc_allowed_blocks` - Filter the allowed Gutenberg blocks
 
-## Installation
+== Installation ==
 
 1. Upload the plugin files to the `/wp-content/plugins/really-simple-disable-comments` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress
 3. That's it! No configuration needed.
 
-## Frequently Asked Questions
+== Frequently Asked Questions ==
 
-### Does this plugin remove existing comments?
+= Does this plugin remove existing comments? =
 
 No, this plugin only hides existing comments and prevents new comments. It does not delete any data from your database.
 
-### Will this plugin disable comments on specific post types only?
+= Will this plugin disable comments on specific post types only? =
 
 No, this plugin is designed to completely disable comments across all post types for simplicity.
 
-### Does this affect my site's performance?
+= Does this affect my site's performance? =
 
 No, the plugin is very lightweight and only adds the necessary hooks to disable comment functionality.
 
-## Changelog
+== Changelog ==
 
-### 0.1.0
+= 0.1.0 =
 * Initial release
 
-## License
+== Upgrade Notice ==
 
-This project is licensed under the GPL v2 or later - see the [LICENSE](LICENSE) file for details.
-
-## Author
-
-[NEXTFLY® Web Design](https://www.nextflywebdesign.com/)
+= 0.1.0 =
+Initial release of Really Simple Disable Comments 
