@@ -1,0 +1,12 @@
+{
+    "name": "nextfly/really-simple-disable-comments",
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.0",
+        "wp-coding-standards/wpcs": "^3.0"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}
