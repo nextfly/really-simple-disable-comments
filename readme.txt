@@ -1,10 +1,8 @@
 === Really Simple Disable Comments ===
 Contributors: nextfly
 Tags: comments, disable comments, disable trackbacks, disable pingbacks
-Requires at least: 5.0
-Tested up to: 6.7.1
+Tested up to: 6.8
 Stable tag: 0.1.0
-Requires PHP: 7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 

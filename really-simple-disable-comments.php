@@ -1,10 +1,13 @@
 <?php
 /**
  * Plugin Name: Really Simple Disable Comments
+ * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
  * Version: 0.1.0
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
+ * Requires at least: 5.0
+ * Requires PHP: 7.0
  * License: GPL v2 or later
  * Text Domain: really-simple-disable-comments
  *
