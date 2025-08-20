@@ -2,7 +2,7 @@
 Contributors: nextfly
 Tags: comments, disable comments, disable trackbacks, disable pingbacks
 Tested up to: 6.8
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,8 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Removes comment-related UI elements
 * Disables trackbacks and pingbacks
 * Removes comment-related admin menu items and dashboard widgets
+* Hides comment counts from dashboard "At a Glance" widget
+* Hides "Recent Comments" section from dashboard Activity widget
 * Disables all comment-related Gutenberg blocks
 * Clean and efficient code with no settings required
 
@@ -62,10 +64,17 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 == Changelog ==
 
+= 0.2.0 =
+* Added hiding of comment counts from "At a Glance" dashboard widget
+* Added hiding of "Recent Comments" section from Activity dashboard widget
+
 = 0.1.0 =
 * Initial release
 
 == Upgrade Notice ==
+
+= 0.2.0 =
+Enhanced dashboard functionality - now hides comment counts and recent comments from dashboard widgets.
 
 = 0.1.0 =
 Initial release of Really Simple Disable Comments 

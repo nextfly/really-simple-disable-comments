@@ -3,7 +3,7 @@
  * Plugin Name: Really Simple Disable Comments
  * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
  * Requires at least: 5.0
@@ -28,7 +28,7 @@ defined('ABSPATH') || exit;
 
 // Define the plugin version.
 if (!defined('RSDC_VERSION')) {
-    define('RSDC_VERSION', '0.1.0');
+    define('RSDC_VERSION', '0.2.0');
 }
 
 /**
@@ -97,6 +97,8 @@ class ReallySimpleDisableComments
         add_action('admin_init', array( $this, 'disable_comments_admin_redirect' ));
         add_action('admin_init', array( $this, 'disable_comments_dashboard' ));
         add_action('wp_before_admin_bar_render', array( $this, 'disable_comments_admin_bar' ));
+        add_action('admin_head', array( $this, 'disable_comments_dashboard_css' ));
+        add_filter('the_comments', array( $this, 'disable_dashboard_recent_comments' ), 10, 2);
 
         // Frontend UI.
         add_action('wp_head', array( $this, 'disable_comments_hide_ui' ));
@@ -197,6 +199,50 @@ class ReallySimpleDisableComments
     {
         global $wp_admin_bar;
         $wp_admin_bar->remove_menu('comments');
+    }
+
+    /**
+     * Hide comment counts from dashboard using CSS
+     *
+     * @return void
+     * @since  0.2.0
+     */
+    public function disable_comments_dashboard_css()
+    {
+        echo '<style>
+            /* Hide comment counts from At a Glance widget */
+            .comment-count,
+            .comment-mod-count {
+                display: none !important;
+            }
+        </style>';
+    }
+
+
+    /**
+     * Disable recent comments from dashboard Activity widget
+     *
+     * @param  array $comments Array of comment objects.
+     * @param  WP_Comment_Query $query Comment query object.
+     * @return array Empty array if dashboard context, original comments otherwise
+     * @since  0.2.0
+     */
+    public function disable_dashboard_recent_comments($comments, $query)
+    {
+        // First check if we're on the dashboard screen
+        if (is_admin() && function_exists('get_current_screen')) {
+            $screen = get_current_screen();
+            if ($screen && $screen->id === 'dashboard') {
+                // Check if we're in dashboard context by examining the call stack
+                $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 15);
+                foreach ($backtrace as $trace) {
+                    if (isset($trace['function']) && $trace['function'] === 'wp_dashboard_recent_comments') {
+                        return array(); // Return empty array to prevent rendering
+                    }
+                }
+            }
+        }
+        return $comments;
     }
 
     /**
