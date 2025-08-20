@@ -233,13 +233,7 @@ class ReallySimpleDisableComments
         if (is_admin() && function_exists('get_current_screen')) {
             $screen = get_current_screen();
             if ($screen && $screen->id === 'dashboard') {
-                // Check if we're in dashboard context by examining the call stack
-                $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 15);
-                foreach ($backtrace as $trace) {
-                    if (isset($trace['function']) && $trace['function'] === 'wp_dashboard_recent_comments') {
-                        return array(); // Return empty array to prevent rendering
-                    }
-                }
+                return array();
             }
         }
         return $comments;
