@@ -1,8 +1,8 @@
 === Really Simple Disable Comments ===
 Contributors: nextfly
 Tags: comments, disable comments, disable trackbacks, disable pingbacks
-Tested up to: 6.8
-Stable tag: 0.2.0
+Tested up to: 6.9
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,6 +64,9 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 == Changelog ==
 
+= 0.2.1 =
+* Changed `wp_redirect()` to `wp_safe_redirect()` for better security when redirecting from comments admin page
+
 = 0.2.0 =
 * Added hiding of comment counts from "At a Glance" dashboard widget
 * Added hiding of "Recent Comments" section from Activity dashboard widget
@@ -73,8 +76,11 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 == Upgrade Notice ==
 
+= 0.2.1 =
+* Minor security enhancement. No user action required.
+
 = 0.2.0 =
-Enhanced dashboard functionality - now hides comment counts and recent comments from dashboard widgets.
+* Enhanced dashboard functionality - now hides comment counts and recent comments from dashboard widgets.
 
 = 0.1.0 =
-Initial release of Really Simple Disable Comments 
+* Initial release of Really Simple Disable Comments 

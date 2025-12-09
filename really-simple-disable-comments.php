@@ -3,7 +3,7 @@
  * Plugin Name: Really Simple Disable Comments
  * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
  * Requires at least: 5.0
@@ -28,7 +28,7 @@ defined('ABSPATH') || exit;
 
 // Define the plugin version.
 if (!defined('RSDC_VERSION')) {
-    define('RSDC_VERSION', '0.2.0');
+    define('RSDC_VERSION', '0.2.1');
 }
 
 /**
@@ -173,7 +173,7 @@ class ReallySimpleDisableComments
     {
         global $pagenow;
         if ($pagenow === 'edit-comments.php') {
-            wp_redirect(admin_url());
+            wp_safe_redirect(admin_url());
             exit;
         }
     }
@@ -222,14 +222,14 @@ class ReallySimpleDisableComments
     /**
      * Disable recent comments from dashboard Activity widget
      *
-     * @param  array $comments Array of comment objects.
+     * @param  array            $comments Array of comment objects.
      * @param  WP_Comment_Query $query Comment query object.
      * @return array Empty array if dashboard context, original comments otherwise
      * @since  0.2.0
      */
     public function disable_dashboard_recent_comments($comments, $query)
     {
-        // First check if we're on the dashboard screen
+        // First check if we're on the dashboard screen.
         if (is_admin() && function_exists('get_current_screen')) {
             $screen = get_current_screen();
             if ($screen && $screen->id === 'dashboard') {
