@@ -3,11 +3,11 @@
  * Plugin Name: Really Simple Disable Comments
  * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
- * Version: 0.2.1
+ * Version: 0.3.0
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
- * Requires at least: 5.0
- * Requires PHP: 7.0
+ * Requires at least: 5.8
+ * Requires PHP: 7.4
  * License: GPL v2 or later
  * Text Domain: really-simple-disable-comments
  *
@@ -28,7 +28,7 @@ defined('ABSPATH') || exit;
 
 // Define the plugin version.
 if (!defined('RSDC_VERSION')) {
-    define('RSDC_VERSION', '0.2.1');
+    define('RSDC_VERSION', '0.3.0');
 }
 
 /**
@@ -89,15 +89,15 @@ class ReallySimpleDisableComments
         // Frontend filters.
         add_filter('comments_open', array( $this, 'disable_comments_status' ), 20, 2);
         add_filter('pings_open', array( $this, 'disable_comments_status' ), 20, 2);
-        add_filter('trackback_status', array( $this, 'disable_comments_status' ), 20, 2);
         add_filter('comments_array', array( $this, 'disable_comments_hide_existing' ), 10, 2);
 
         // Admin-related actions.
         add_action('admin_menu', array( $this, 'disable_comments_admin_menu' ));
         add_action('admin_init', array( $this, 'disable_comments_admin_redirect' ));
         add_action('admin_init', array( $this, 'disable_comments_dashboard' ));
+        add_action('add_meta_boxes', array( $this, 'disable_comments_metaboxes' ), 100);
         add_action('wp_before_admin_bar_render', array( $this, 'disable_comments_admin_bar' ));
-        add_action('admin_head', array( $this, 'disable_comments_dashboard_css' ));
+        add_action('admin_enqueue_scripts', array( $this, 'disable_comments_admin_assets' ));
         add_filter('the_comments', array( $this, 'disable_dashboard_recent_comments' ), 10, 2);
 
         // Frontend UI.
@@ -105,6 +105,38 @@ class ReallySimpleDisableComments
 
         // Disable Gutenberg block comments.
         add_action('init', array( $this, 'disable_block_comments' ));
+        add_filter('register_block_type_args', array( $this, 'disable_comment_block_inserter' ), 10, 2);
+    }
+
+    /**
+     * Get the list of comment-related block types.
+     *
+     * @return array
+     * @since   0.3.0
+     */
+    private function get_comment_block_types()
+    {
+        return array(
+            'core/comments',
+            'core/comments-query-loop',
+            'core/comments-title',
+            'core/post-comments-form',
+            'core/post-comments-link',
+            'core/post-comments-count',
+            'core/post-comment',
+            'core/comment-author-name',
+            'core/comment-author-avatar',
+            'core/comment-content',
+            'core/comment-date',
+            'core/comment-edit-link',
+            'core/comment-reply-link',
+            'core/comment-template',
+            'core/comments-pagination',
+            'core/comments-pagination-next',
+            'core/comments-pagination-previous',
+            'core/comments-pagination-numbers',
+            'core/latest-comments',
+        );
     }
 
     /**
@@ -121,7 +153,6 @@ class ReallySimpleDisableComments
             $post_type = apply_filters('rsdc_post_type', $post_type);
             remove_post_type_support($post_type, 'comments');
             remove_post_type_support($post_type, 'trackbacks');
-            remove_post_type_support($post_type, 'pingbacks');
         }
         do_action('rsdc_after_disable_comments_post_types');
     }
@@ -190,6 +221,34 @@ class ReallySimpleDisableComments
     }
 
     /**
+     * Remove comment-related metaboxes from classic edit screens.
+     *
+     * @param  string $post_type Current post type.
+     * @return void
+     * @since   0.3.0
+     */
+    public function disable_comments_metaboxes($post_type)
+    {
+        $metaboxes = array(
+            'commentsdiv',
+            'commentstatusdiv',
+            'trackbacksdiv',
+        );
+
+        $contexts = array(
+            'normal',
+            'advanced',
+            'side',
+        );
+
+        foreach ($metaboxes as $metabox) {
+            foreach ($contexts as $context) {
+                remove_meta_box($metabox, $post_type, $context);
+            }
+        }
+    }
+
+    /**
      * Remove from admin bar
      *
      * @return void
@@ -198,26 +257,59 @@ class ReallySimpleDisableComments
     public function disable_comments_admin_bar()
     {
         global $wp_admin_bar;
+        
+        if (! $wp_admin_bar) {
+            return;
+        }
+
         $wp_admin_bar->remove_menu('comments');
     }
 
     /**
-     * Hide comment counts from dashboard using CSS
+     * Enqueue admin assets to suppress comment-related UI on the dashboard.
      *
+     * Registers inline CSS and a footer script on the dashboard to hide and
+     * remove comment count DOM nodes from the At a Glance widget.
+     *
+     * @param  string $hook_suffix The current admin page hook suffix.
      * @return void
-     * @since  0.2.0
+     * @since  0.3.0
      */
-    public function disable_comments_dashboard_css()
+    public function disable_comments_admin_assets($hook_suffix)
     {
-        echo '<style>
-            /* Hide comment counts from At a Glance widget */
-            .comment-count,
-            .comment-mod-count {
-                display: none !important;
-            }
-        </style>';
-    }
+        if ('index.php' !== $hook_suffix) {
+            return;
+        }
 
+        $css = '/* Hide comment counts from At a Glance widget */
+        #dashboard_right_now .comment-count,
+        #dashboard_right_now .comment-mod-count,
+        #dashboard_right_now a[href*="edit-comments.php"] {
+            display: none !important;
+        }';
+
+        wp_register_style('rsdc-admin', false, array(), RSDC_VERSION);
+        wp_add_inline_style('rsdc-admin', $css);
+        wp_enqueue_style('rsdc-admin');
+
+        $script = '(function () {
+            var widget = document.getElementById("dashboard_right_now");
+            if (!widget) { return; }
+            var commentLinks = widget.querySelectorAll(".comment-count, .comment-mod-count, a[href*=\"edit-comments.php\"]");
+            commentLinks.forEach(function (element) {
+                var listItem = element.closest("li");
+                if (listItem && widget.contains(listItem)) {
+                    listItem.remove();
+                    return;
+                }
+                element.remove();
+            });
+        }());';
+
+        wp_register_script('rsdc-admin-dom', false, array(), RSDC_VERSION, array('in_footer' => true));
+        wp_add_inline_script('rsdc-admin-dom', $script);
+        wp_enqueue_script('rsdc-admin-dom');
+    }
 
     /**
      * Disable recent comments from dashboard Activity widget
@@ -278,10 +370,34 @@ class ReallySimpleDisableComments
     }
 
     /**
+     * Hide comment-related blocks from the inserter at registration time.
+     *
+     * @param  array  $args Block type registration arguments.
+     * @param  string $block_type Block type name.
+     * @return array
+     * @since   0.3.0
+     */
+    public function disable_comment_block_inserter($args, $block_type)
+    {
+        if (! in_array($block_type, $this->get_comment_block_types(), true)) {
+            return $args;
+        }
+
+        if (! isset($args['supports']) || ! is_array($args['supports'])) {
+            $args['supports'] = array();
+        }
+
+        $args['supports']['inserter'] = false;
+
+        return $args;
+    }
+
+    /**
      * Disable Gutenberg block comments
      *
      * @return void
      * @since  0.1.0
+     * @version 0.3.0
      */
     public function disable_block_comments()
     {
@@ -299,30 +415,24 @@ class ReallySimpleDisableComments
         add_filter(
             'allowed_block_types_all',
             function ($allowed_blocks) {
+                if (false === $allowed_blocks) {
+                    return $allowed_blocks;
+                }
+
+                if (true === $allowed_blocks) {
+                    if (class_exists('WP_Block_Type_Registry')) {
+                        $allowed_blocks = array_keys(\WP_Block_Type_Registry::get_instance()->get_all_registered());
+                    } else {
+                        return $allowed_blocks; // Fallback for very old setups.
+                    }
+                }
+
                 if (! is_array($allowed_blocks)) {
                     return $allowed_blocks;
                 }
 
-                $blocks_to_remove = array(
-                'core/comments',
-                'core/comments-query-loop',
-                'core/comments-title',
-                'core/comment-author-name',
-                'core/comment-content',
-                'core/comment-date',
-                'core/comment-edit-link',
-                'core/comment-reply-link',
-                'core/comment-template',
-                'core/comments-pagination',
-                'core/comments-pagination-next',
-                'core/comments-pagination-previous',
-                'core/comments-pagination-numbers',
-                'core/post-comments-form',
-                'core/latest-comments',
-                );
-
-                foreach ($blocks_to_remove as $block) {
-                    $key = array_search($block, $allowed_blocks);
+                foreach ($this->get_comment_block_types() as $block) {
+                    $key = array_search($block, $allowed_blocks, true);
                     if (false !== $key) {
                         unset($allowed_blocks[ $key ]);
                     }

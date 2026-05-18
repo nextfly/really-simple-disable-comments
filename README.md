@@ -1,7 +1,7 @@
 # Really Simple Disable Comments
 
 [![WordPress](https://img.shields.io/wordpress/v/really-simple-disable-comments.svg)](https://wordpress.org/plugins/really-simple-disable-comments/)
-[![PHP](https://img.shields.io/badge/php-%3E%3D7.0-8892BF.svg)](https://php.net/)
+[![PHP](https://img.shields.io/badge/php-%3E%3D7.4-8892BF.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/license-GPL--2.0%2B-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 
 Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
