@@ -1,8 +1,10 @@
 === Really Simple Disable Comments ===
 Contributors: nextfly
 Tags: comments, disable comments, disable trackbacks, disable pingbacks
-Tested up to: 6.9
-Stable tag: 0.2.1
+Requires at least: 5.8
+Tested up to: 7.0
+Requires PHP: 7.4
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,6 +66,11 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 == Changelog ==
 
+= 0.3.0 =
+* Added WordPress 7.0 compatibility updates for comment-related block inserter removal
+* Hardened dashboard comment count cleanup for the refreshed WordPress 7.0 admin UI
+* Removed classic editor comment-related metaboxes so Screen Options cannot restore them on edit screens
+
 = 0.2.1 =
 * Changed `wp_redirect()` to `wp_safe_redirect()` for better security when redirecting from comments admin page
 
@@ -75,6 +82,9 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 * Initial release
 
 == Upgrade Notice ==
+
+= 0.3.0 =
+* WordPress 7.0 compatibility update with improved comment block and metabox removal and enhanced dashboard cleanup.
 
 = 0.2.1 =
 * Minor security enhancement. No user action required.
