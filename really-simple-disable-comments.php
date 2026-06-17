@@ -3,7 +3,7 @@
  * Plugin Name: Really Simple Disable Comments
  * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
  * Requires at least: 5.8
@@ -28,7 +28,7 @@ defined('ABSPATH') || exit;
 
 // Define the plugin version.
 if (!defined('RSDC_VERSION')) {
-    define('RSDC_VERSION', '0.3.0');
+    define('RSDC_VERSION', '0.4.0');
 }
 
 /**
@@ -85,6 +85,12 @@ class ReallySimpleDisableComments
     {
         // Disable comment support.
         add_action('init', array( $this, 'disable_comments_post_types' ));
+
+        // Block direct comment submission and REST/XML-RPC comment endpoints.
+        add_action('pre_comment_on_post', array( $this, 'disable_comments_block_submission' ));
+        add_filter('rest_endpoints', array( $this, 'disable_comments_rest_endpoints' ));
+        add_filter('xmlrpc_methods', array( $this, 'disable_comments_xmlrpc_pingback' ));
+        add_filter('wp_headers', array( $this, 'disable_comments_remove_pingback_header' ));
 
         // Frontend filters.
         add_filter('comments_open', array( $this, 'disable_comments_status' ), 20, 2);
@@ -155,6 +161,93 @@ class ReallySimpleDisableComments
             remove_post_type_support($post_type, 'trackbacks');
         }
         do_action('rsdc_after_disable_comments_post_types');
+    }
+    
+    /**
+     * Block direct comment submission via wp-comments-post.php.
+     *
+     * Hooked to `pre_comment_on_post`, which fires inside
+     * `wp_handle_comment_submission()` before any comment is saved. This
+     * provides defense-in-depth alongside the `comments_open` filter.
+     *
+     * @since  0.4.0
+     * @action pre_comment_on_post
+     * @filter rsdc_block_comment_submission Allows opting out of the block.
+     * @return void
+     */
+    public function disable_comments_block_submission()
+    {
+        if (! apply_filters('rsdc_block_comment_submission', true)) {
+            return;
+        }
+
+        wp_die(
+            esc_html__('Comments are disabled on this site.', 'really-simple-disable-comments'),
+            esc_html__('Forbidden', 'really-simple-disable-comments'),
+            array( 'response' => 403 )
+        );
+    }
+
+    /**
+     * Remove comment-related REST API endpoints.
+     *
+     * Unsets `/wp/v2/comments` and `/wp/v2/comments/<id>` so the endpoints
+     * return a 404 rest_no_route response instead of comment data.
+     *
+     * @param  array $endpoints Registered REST API endpoints.
+     * @return array
+     * @since  0.4.0
+     * @filter rest_endpoints
+     * @filter rsdc_rest_endpoints Allows developers to modify the endpoint list after removal.
+     */
+    public function disable_comments_rest_endpoints($endpoints)
+    {
+        unset($endpoints['/wp/v2/comments']);
+
+        if (isset($endpoints['/wp/v2/comments/(?P<id>[\d]+)'])) {
+            unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
+        }
+
+        return apply_filters('rsdc_rest_endpoints', $endpoints);
+    }
+
+    /**
+     * Remove XML-RPC pingback methods.
+     *
+     * Unsets `pingback.ping` and `pingback.extensions.getPingbacks` while
+     * leaving all other XML-RPC methods intact.
+     *
+     * @param  array $methods Registered XML-RPC methods.
+     * @return array
+     * @since  0.4.0
+     * @filter xmlrpc_methods
+     * @filter rsdc_xmlrpc_methods Allows developers to adjust the method list after removal.
+     */
+    public function disable_comments_xmlrpc_pingback($methods)
+    {
+        unset($methods['pingback.ping'], $methods['pingback.extensions.getPingbacks']);
+
+        return apply_filters('rsdc_xmlrpc_methods', $methods);
+    }
+
+    /**
+     * Remove the X-Pingback header from responses.
+     *
+     * Strips the autodiscovery hint so clients cannot detect the XML-RPC
+     * endpoint via the response header.
+     *
+     * @param  array $headers HTTP response headers.
+     * @return array
+     * @since  0.4.0
+     * @filter wp_headers
+     */
+    public function disable_comments_remove_pingback_header($headers)
+    {
+        if (isset($headers['X-Pingback'])) {
+            unset($headers['X-Pingback']);
+        }
+
+        return $headers;
     }
 
     /**
@@ -257,7 +350,7 @@ class ReallySimpleDisableComments
     public function disable_comments_admin_bar()
     {
         global $wp_admin_bar;
-        
+
         if (! $wp_admin_bar) {
             return;
         }

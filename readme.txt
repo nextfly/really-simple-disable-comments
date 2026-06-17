@@ -4,7 +4,7 @@ Tags: comments, disable comments, disable trackbacks, disable pingbacks
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Disables comments on all post types
 * Removes comment-related UI elements
 * Disables trackbacks and pingbacks
+* Blocks direct comment submission to wp-comments-post.php (403 response)
+* Removes comment REST API endpoints (/wp/v2/comments)
+* Disables XML-RPC pingback methods
+* Strips X-Pingback response header
 * Removes comment-related admin menu items and dashboard widgets
 * Hides comment counts from dashboard "At a Glance" widget
 * Hides "Recent Comments" section from dashboard Activity widget
@@ -28,6 +32,10 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 = What Gets Disabled? =
 
 * Comment forms and displays
+* Direct comment submission via wp-comments-post.php
+* Comment REST API endpoints (/wp/v2/comments)
+* XML-RPC pingback methods
+* X-Pingback response header
 * Admin menu items and dashboard widgets
 * Comment-related Gutenberg blocks
 * Trackbacks and pingbacks
@@ -43,6 +51,9 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_hide_ui_styles` - Filter the CSS used to hide comment UI elements
 * `rsdc_block_editor_settings` - Filter the block editor settings
 * `rsdc_allowed_blocks` - Filter the allowed Gutenberg blocks
+* `rsdc_block_comment_submission` - Control whether direct comment submission is blocked (return false to allow)
+* `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
+* `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
 
 == Installation ==
 
@@ -66,6 +77,13 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 == Changelog ==
 
+= 0.4.0 =
+* Block direct comment submission to wp-comments-post.php with a 403 response
+* Remove /wp/v2/comments and /wp/v2/comments/<id> REST API endpoints
+* Remove XML-RPC pingback.ping and pingback.extensions.getPingbacks methods
+* Strip X-Pingback response header to remove pingback autodiscovery
+* Added developer filters: rsdc_block_comment_submission, rsdc_rest_endpoints, rsdc_xmlrpc_methods
+
 = 0.3.0 =
 * Added WordPress 7.0 compatibility updates for comment-related block inserter removal
 * Hardened dashboard comment count cleanup for the refreshed WordPress 7.0 admin UI
@@ -82,6 +100,9 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 * Initial release
 
 == Upgrade Notice ==
+
+= 0.4.0 =
+Hardens comment blocking: direct POST submissions, REST API endpoints, and XML-RPC pingbacks are now all blocked at the server level.
 
 = 0.3.0 =
 * WordPress 7.0 compatibility update with improved comment block and metabox removal and enhanced dashboard cleanup.
