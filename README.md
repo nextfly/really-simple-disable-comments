@@ -50,6 +50,7 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_block_comment_submission` - Control whether direct comment submission is blocked (return false to allow)
 * `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
 * `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
+* `rsdc_rest_post_response` - Filter the normalized WP_REST_Response for post objects
 
 ## Installation
 

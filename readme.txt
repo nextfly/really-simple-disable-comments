@@ -54,6 +54,7 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_block_comment_submission` - Control whether direct comment submission is blocked (return false to allow)
 * `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
 * `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
+* `rsdc_rest_post_response` - Filter the normalized WP_REST_Response for post objects
 
 == Installation ==
 
@@ -80,9 +81,11 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 = 0.4.0 =
 * Block direct comment submission to wp-comments-post.php with a 403 response
 * Remove /wp/v2/comments and /wp/v2/comments/<id> REST API endpoints
+* Normalize comment_status and ping_status to "closed" in post REST responses
+* Remove the replies HAL link from post REST responses
 * Remove XML-RPC pingback.ping and pingback.extensions.getPingbacks methods
 * Strip X-Pingback response header to remove pingback autodiscovery
-* Added developer filters: rsdc_block_comment_submission, rsdc_rest_endpoints, rsdc_xmlrpc_methods
+* Added developer filters: rsdc_block_comment_submission, rsdc_rest_endpoints, rsdc_xmlrpc_methods, rsdc_rest_post_response
 
 = 0.3.0 =
 * Added WordPress 7.0 compatibility updates for comment-related block inserter removal
@@ -102,7 +105,7 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 == Upgrade Notice ==
 
 = 0.4.0 =
-Hardens comment blocking: direct POST submissions, REST API endpoints, and XML-RPC pingbacks are now all blocked at the server level.
+Hardens comment blocking: direct POST submissions, REST API endpoints (including post response fields), and XML-RPC pingbacks are now all blocked at the server level.
 
 = 0.3.0 =
 * WordPress 7.0 compatibility update with improved comment block and metabox removal and enhanced dashboard cleanup.

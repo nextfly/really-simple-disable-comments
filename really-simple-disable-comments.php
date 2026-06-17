@@ -88,6 +88,7 @@ class ReallySimpleDisableComments
 
         // Block direct comment submission and REST/XML-RPC comment endpoints.
         add_action('pre_comment_on_post', array( $this, 'disable_comments_block_submission' ));
+        add_action('rest_api_init', array( $this, 'disable_comments_rest_post_fields' ));
         add_filter('rest_endpoints', array( $this, 'disable_comments_rest_endpoints' ));
         add_filter('xmlrpc_methods', array( $this, 'disable_comments_xmlrpc_pingback' ));
         add_filter('wp_headers', array( $this, 'disable_comments_remove_pingback_header' ));
@@ -161,6 +162,62 @@ class ReallySimpleDisableComments
             remove_post_type_support($post_type, 'trackbacks');
         }
         do_action('rsdc_after_disable_comments_post_types');
+    }
+
+    /**
+     * Register per-post-type REST response filters on rest_api_init.
+     *
+     * Loops over every post type exposed in the REST API and attaches
+     * `disable_comments_rest_post_response` so that comment/ping status fields
+     * and the replies link are normalized for all of them.
+     *
+     * @since  0.4.0
+     * @action rest_api_init
+     * @return void
+     */
+    public function disable_comments_rest_post_fields()
+    {
+        foreach (get_post_types(array( 'show_in_rest' => true )) as $post_type) {
+            add_filter(
+                "rest_prepare_{$post_type}",
+                array( $this, 'disable_comments_rest_post_response' ),
+                10,
+                3
+            );
+        }
+    }
+
+    /**
+     * Normalize comment/ping status fields and remove the replies link in REST responses.
+     *
+     * Sets `comment_status` and `ping_status` to `"closed"` and removes the
+     * `replies` HAL link so post objects do not advertise comment availability
+     * even though comments are blocked everywhere else.
+     *
+     * @param  WP_REST_Response $response The REST response object.
+     * @param  WP_Post          $post     The post object.
+     * @param  WP_REST_Request  $request  The REST request.
+     * @return WP_REST_Response
+     * @since  0.4.0
+     * @filter rest_prepare_{$post_type}
+     * @filter rsdc_rest_post_response Allows developers to modify the response after normalization.
+     */
+    public function disable_comments_rest_post_response($response, $post, $request)
+    {
+        $data = $response->get_data();
+
+        if (isset($data['comment_status'])) {
+            $data['comment_status'] = 'closed';
+        }
+
+        if (isset($data['ping_status'])) {
+            $data['ping_status'] = 'closed';
+        }
+
+        $response->set_data($data);
+        $response->remove_link('replies');
+
+        return apply_filters('rsdc_rest_post_response', $response, $post, $request);
     }
 
     /**
