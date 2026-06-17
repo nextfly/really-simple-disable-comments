@@ -162,7 +162,7 @@ class ReallySimpleDisableComments
         }
         do_action('rsdc_after_disable_comments_post_types');
     }
-    
+
     /**
      * Block direct comment submission via wp-comments-post.php.
      *
