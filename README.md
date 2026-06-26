@@ -15,6 +15,10 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Disables comments on all post types
 * Removes comment-related UI elements
 * Disables trackbacks and pingbacks
+* Blocks direct comment submission to wp-comments-post.php (403 response)
+* Removes comment REST API endpoints (/wp/v2/comments)
+* Disables XML-RPC pingback methods
+* Strips X-Pingback response header
 * Removes comment-related admin menu items and dashboard widgets
 * Hides comment counts from dashboard "At a Glance" widget
 * Hides "Recent Comments" section from dashboard Activity widget
@@ -24,6 +28,10 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 ### What Gets Disabled?
 
 * Comment forms and displays
+* Direct comment submission via wp-comments-post.php
+* Comment REST API endpoints (/wp/v2/comments)
+* XML-RPC pingback methods
+* X-Pingback response header
 * Admin menu items and dashboard widgets
 * Comment-related Gutenberg blocks
 * Trackbacks and pingbacks
@@ -39,6 +47,10 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_hide_ui_styles` - Filter the CSS used to hide comment UI elements
 * `rsdc_block_editor_settings` - Filter the block editor settings
 * `rsdc_allowed_blocks` - Filter the allowed Gutenberg blocks
+* `rsdc_block_comment_submission` - Control whether direct comment submission is blocked (return false to allow)
+* `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
+* `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
+* `rsdc_rest_post_response` - Filter the normalized WP_REST_Response for post objects
 
 ## Installation
 
