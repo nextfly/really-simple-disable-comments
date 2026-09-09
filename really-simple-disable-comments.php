@@ -94,6 +94,11 @@ class ReallySimpleDisableComments
         add_filter('xmlrpc_methods', array( $this, 'disable_comments_xmlrpc_pingback' ));
         add_filter('wp_headers', array( $this, 'disable_comments_remove_pingback_header' ));
 
+        // Comment feeds.
+        add_filter('feed_links_show_comments_feed', array( $this, 'disable_comments_feed_links' ));
+        add_filter('feed_links_extra_show_post_comments_feed', array( $this, 'disable_comments_feed_links' ));
+        add_action('template_redirect', array( $this, 'disable_comments_block_feed' ), 1);
+
         // Frontend filters.
         add_filter('comments_open', array( $this, 'disable_comments_status' ), 20, 2);
         add_filter('pings_open', array( $this, 'disable_comments_status' ), 20, 2);
@@ -394,6 +399,73 @@ class ReallySimpleDisableComments
         }
 
         return $headers;
+    }
+
+    /**
+     * Hide comment feed autodiscovery links.
+     *
+     * Covers both the site-wide comments feed link emitted by `feed_links()`
+     * and the per-post comments feed link emitted by `feed_links_extra()`.
+     * Core defaults the second filter to the result of the first, but a theme
+     * or plugin can set them independently, so both are hooked.
+     *
+     * @param  bool $show Whether core intends to show the link.
+     * @return bool
+     * @since  0.5.0
+     * @filter feed_links_show_comments_feed
+     * @filter feed_links_extra_show_post_comments_feed
+     */
+    public function disable_comments_feed_links($show)
+    {
+        if (! $this->disable_comment_feeds()) {
+            return $show;
+        }
+
+        return false;
+    }
+
+    /**
+     * Return 404 for comment feeds.
+     *
+     * Removing the autodiscovery links is not enough on its own: the feed URLs
+     * are guessable and may already be indexed, and the comment feed template
+     * queries comments directly rather than honoring `comments_open`.
+     *
+     * @return void
+     * @since  0.5.0
+     * @action template_redirect
+     */
+    public function disable_comments_block_feed()
+    {
+        if (! $this->disable_comment_feeds()) {
+            return;
+        }
+
+        if (! is_comment_feed()) {
+            return;
+        }
+
+        global $wp_query;
+
+        if ($wp_query instanceof WP_Query) {
+            $wp_query->set_404();
+        }
+
+        status_header(404);
+        nocache_headers();
+        exit;
+    }
+
+    /**
+     * Whether comment feeds should be disabled.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_disable_comment_feeds Set to false to leave comment feeds alone.
+     */
+    private function disable_comment_feeds()
+    {
+        return (bool) apply_filters('rsdc_disable_comment_feeds', true);
     }
 
     /**
