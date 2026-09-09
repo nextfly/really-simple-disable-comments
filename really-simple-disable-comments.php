@@ -127,15 +127,26 @@ class ReallySimpleDisableComments
     /**
      * Get the list of comment-related block types.
      *
+     * Includes the legacy `core/post-comments` block, which WordPress still
+     * registers as a deprecated alias, so pre-6.1 content is covered too.
+     *
      * @return array
      * @since   0.3.0
+     * @version 0.5.0
      */
     private function get_comment_block_types()
     {
-        return array(
+        static $block_types = null;
+
+        if (null !== $block_types) {
+            return $block_types;
+        }
+
+        $block_types = array(
             'core/comments',
             'core/comments-query-loop',
             'core/comments-title',
+            'core/post-comments',
             'core/post-comments-form',
             'core/post-comments-link',
             'core/post-comments-count',
@@ -153,6 +164,8 @@ class ReallySimpleDisableComments
             'core/comments-pagination-numbers',
             'core/latest-comments',
         );
+
+        return $block_types;
     }
 
     /**
