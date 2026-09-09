@@ -2,9 +2,9 @@
 Contributors: nextfly
 Tags: comments, disable comments, disable trackbacks, disable pingbacks
 Requires at least: 5.8
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,9 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 * Removes comment-related UI elements
 * Disables trackbacks and pingbacks
 * Blocks direct comment submission to wp-comments-post.php (403 response)
-* Removes comment REST API endpoints (/wp/v2/comments)
+* Blocks the comment REST API endpoints (/wp/v2/comments), while keeping WordPress 7.1 editorial Notes working
+* Stops comment blocks rendering at all on block themes, so comment text never reaches the page source
+* Disables comment feeds and removes their autodiscovery links
 * Disables XML-RPC pingback methods
 * Strips X-Pingback response header
 * Removes comment-related admin menu items and dashboard widgets
@@ -33,7 +35,9 @@ Really Simple Disable Comments is a lightweight plugin that completely disables 
 
 * Comment forms and displays
 * Direct comment submission via wp-comments-post.php
-* Comment REST API endpoints (/wp/v2/comments)
+* Comment REST API reads and writes (/wp/v2/comments), except WordPress 7.1 editorial Notes
+* Comment block output on block themes (markup is removed, not just hidden)
+* Comment feeds (/comments/feed/ and per-post comment feeds) and their <head> links
 * XML-RPC pingback methods
 * X-Pingback response header
 * Admin menu items and dashboard widgets
@@ -55,6 +59,9 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
 * `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
 * `rsdc_rest_post_response` - Filter the normalized WP_REST_Response for post objects
+* `rsdc_allow_editorial_notes` - Return false to unregister the comment REST routes entirely, as in 0.4.0 (also disables WordPress 7.1 editorial Notes)
+* `rsdc_disable_comment_feeds` - Return false to leave comment feeds and their autodiscovery links alone
+* `rsdc_disable_comment_block_output` - Return false to let comment-related blocks render their markup again
 
 == Installation ==
 
@@ -76,7 +83,26 @@ No, this plugin is designed to completely disable comments across all post types
 
 No, the plugin is very lightweight and only adds the necessary hooks to disable comment functionality.
 
+= Does this break WordPress 7.1 editorial Notes? =
+
+No. Editorial Notes are private annotations collaborators leave on a post, and WordPress serves them over the same REST route as public comments. The plugin keeps that route available for Notes only, so Notes keep working while public comment data stays blocked. Use the `rsdc_allow_editorial_notes` filter to turn Notes off as well.
+
+= What happens to my comment feeds? =
+
+`/comments/feed/` and per-post comment feeds return 404, and their autodiscovery links are removed from the page head. Anyone still subscribed to a comment feed will stop receiving it. Your main content feed at `/feed/` is untouched. Use the `rsdc_disable_comment_feeds` filter to keep comment feeds enabled.
+
+= My theme's comment markup used to be in the page source. Where did it go? =
+
+On block themes the plugin now stops comment blocks producing output at all, rather than only hiding them with CSS. Commenter names, comment text and avatar URLs no longer ship with the page, so scrapers and crawlers cannot read them. Use the `rsdc_disable_comment_block_output` filter to restore the old behavior.
+
 == Changelog ==
+
+= 0.5.0 =
+* Enqueue the front-end hide styles on wp_enqueue_scripts so they print inside <head> instead of after the page content
+* Stop comment-related blocks rendering at all, so commenter names, comment text and avatar URLs no longer appear in the page source on block themes
+* Comment feeds (/comments/feed/ and per-post comment feeds) now return 404, and their autodiscovery links are removed from <head>
+* Keep /wp/v2/comments registered so WordPress 7.1 editorial Notes keep working, while all other comment REST reads and writes still return 404 rest_no_route
+* Added developer filters: rsdc_allow_editorial_notes, rsdc_disable_comment_feeds, rsdc_disable_comment_block_output
 
 = 0.4.0 =
 * Block direct comment submission to wp-comments-post.php with a 403 response
@@ -103,6 +129,9 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 * Initial release
 
 == Upgrade Notice ==
+
+= 0.5.0 =
+Comment feeds now return 404 and comment markup is no longer output on block themes. WordPress 7.1 editorial Notes keep working. Three new filters let you switch each behavior off.
 
 = 0.4.0 =
 Hardens comment blocking: direct POST submissions, REST API endpoints (including post response fields), and XML-RPC pingbacks are now all blocked at the server level.
