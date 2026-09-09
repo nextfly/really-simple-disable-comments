@@ -90,6 +90,7 @@ class ReallySimpleDisableComments
         add_action('pre_comment_on_post', array( $this, 'disable_comments_block_submission' ));
         add_action('rest_api_init', array( $this, 'disable_comments_rest_post_fields' ));
         add_filter('rest_endpoints', array( $this, 'disable_comments_rest_endpoints' ));
+        add_filter('rest_request_before_callbacks', array( $this, 'disable_comments_rest_gate' ), 10, 3);
         add_filter('xmlrpc_methods', array( $this, 'disable_comments_xmlrpc_pingback' ));
         add_filter('wp_headers', array( $this, 'disable_comments_remove_pingback_header' ));
 
@@ -248,24 +249,112 @@ class ReallySimpleDisableComments
     /**
      * Remove comment-related REST API endpoints.
      *
-     * Unsets `/wp/v2/comments` and `/wp/v2/comments/<id>` so the endpoints
-     * return a 404 rest_no_route response instead of comment data.
+     * WordPress 7.1 serves editorial Notes through the same controller as
+     * public comments, so the routes are left registered by default and
+     * policed by `disable_comments_rest_gate()` instead. When editorial Notes
+     * are switched off via `rsdc_allow_editorial_notes`, the routes are
+     * unregistered outright, as they were before 0.5.0.
      *
      * @param  array $endpoints Registered REST API endpoints.
      * @return array
      * @since  0.4.0
+     * @version 0.5.0
      * @filter rest_endpoints
      * @filter rsdc_rest_endpoints Allows developers to modify the endpoint list after removal.
      */
     public function disable_comments_rest_endpoints($endpoints)
     {
-        unset($endpoints['/wp/v2/comments']);
+        if (! $this->allow_editorial_notes()) {
+            unset($endpoints['/wp/v2/comments']);
 
-        if (isset($endpoints['/wp/v2/comments/(?P<id>[\d]+)'])) {
-            unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
+            if (isset($endpoints['/wp/v2/comments/(?P<id>[\d]+)'])) {
+                unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
+            }
         }
 
         return apply_filters('rsdc_rest_endpoints', $endpoints);
+    }
+
+    /**
+     * Allow only editorial Note traffic through the comments REST route.
+     *
+     * WordPress 7.1 added editorial Notes, stored as comments with
+     * `comment_type` of `note` and served through the same REST controller as
+     * public comments. This gate keeps the route available for Notes while
+     * returning the same `rest_no_route` 404 that earlier versions returned by
+     * unregistering the route entirely.
+     *
+     * Requests are denied by default: the collection route must ask for
+     * `type=note` explicitly (core defaults that parameter to `comment`), and
+     * single-item requests must resolve to a comment whose type is `note`.
+     *
+     * @param  WP_REST_Response|WP_HTTP_Response|WP_Error|mixed $response Current response.
+     * @param  array                                            $handler  Matched route handler.
+     * @param  WP_REST_Request                                  $request  Current request.
+     * @return WP_REST_Response|WP_HTTP_Response|WP_Error|mixed
+     * @since  0.5.0
+     * @filter rest_request_before_callbacks
+     */
+    public function disable_comments_rest_gate($response, $handler, $request)
+    {
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        if (! $this->allow_editorial_notes()) {
+            return $response;
+        }
+
+        if (! $request instanceof WP_REST_Request) {
+            return $response;
+        }
+
+        if (! preg_match('#^/wp/v2/comments(?:/(\d+))?$#', $request->get_route(), $matches)) {
+            return $response;
+        }
+
+        $comment_id = isset($matches[1]) ? (int) $matches[1] : 0;
+
+        if ($this->is_editorial_note_request($request, $comment_id)) {
+            return $response;
+        }
+
+        return new WP_Error(
+            'rest_no_route',
+            __('No route was found matching the URL and request method.', 'really-simple-disable-comments'),
+            array( 'status' => 404 )
+        );
+    }
+
+    /**
+     * Determine whether a comments REST request targets an editorial Note.
+     *
+     * @param  WP_REST_Request $request    Current request.
+     * @param  int             $comment_id Comment ID from the route, or 0 for the collection route.
+     * @return bool
+     * @since  0.5.0
+     */
+    private function is_editorial_note_request($request, $comment_id)
+    {
+        if ($comment_id > 0) {
+            $comment = get_comment($comment_id);
+
+            return ($comment instanceof WP_Comment) && 'note' === $comment->comment_type;
+        }
+
+        return 'note' === $request->get_param('type');
+    }
+
+    /**
+     * Whether editorial Notes are allowed through the comments REST route.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_allow_editorial_notes Set to false to restore pre-0.5.0 behavior.
+     */
+    private function allow_editorial_notes()
+    {
+        return (bool) apply_filters('rsdc_allow_editorial_notes', true);
     }
 
     /**
