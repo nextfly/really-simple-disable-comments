@@ -108,7 +108,7 @@ class ReallySimpleDisableComments
         add_filter('the_comments', array( $this, 'disable_dashboard_recent_comments' ), 10, 2);
 
         // Frontend UI.
-        add_action('wp_head', array( $this, 'disable_comments_hide_ui' ));
+        add_action('wp_enqueue_scripts', array( $this, 'disable_comments_hide_ui' ));
 
         // Disable Gutenberg block comments.
         add_action('init', array( $this, 'disable_block_comments' ));
