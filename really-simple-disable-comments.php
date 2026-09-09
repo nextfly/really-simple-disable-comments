@@ -3,7 +3,7 @@
  * Plugin Name: Really Simple Disable Comments
  * Plugin URI: https://github.com/nextfly/really-simple-disable-comments
  * Description: Effortlessly disable all comments and trackback functionality across your entire WordPress site by activating this plugin.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Author: NEXTFLY® Web Design
  * Author URI: https://www.nextflywebdesign.com/
  * Requires at least: 5.8
@@ -19,6 +19,8 @@
  *
  * This plugin completely disables WordPress comments functionality including:
  * - Comment forms and displays
+ * - Comment block output on block themes
+ * - Comment feeds and their autodiscovery links
  * - Admin menu items and dashboard widgets
  * - Comment-related Gutenberg blocks
  * - Trackbacks and pingbacks
@@ -28,7 +30,7 @@ defined('ABSPATH') || exit;
 
 // Define the plugin version.
 if (!defined('RSDC_VERSION')) {
-    define('RSDC_VERSION', '0.4.0');
+    define('RSDC_VERSION', '0.5.0');
 }
 
 /**
@@ -90,8 +92,14 @@ class ReallySimpleDisableComments
         add_action('pre_comment_on_post', array( $this, 'disable_comments_block_submission' ));
         add_action('rest_api_init', array( $this, 'disable_comments_rest_post_fields' ));
         add_filter('rest_endpoints', array( $this, 'disable_comments_rest_endpoints' ));
+        add_filter('rest_request_before_callbacks', array( $this, 'disable_comments_rest_gate' ), 10, 3);
         add_filter('xmlrpc_methods', array( $this, 'disable_comments_xmlrpc_pingback' ));
         add_filter('wp_headers', array( $this, 'disable_comments_remove_pingback_header' ));
+
+        // Comment feeds.
+        add_filter('feed_links_show_comments_feed', array( $this, 'disable_comments_feed_links' ));
+        add_filter('feed_links_extra_show_post_comments_feed', array( $this, 'disable_comments_feed_links' ));
+        add_action('template_redirect', array( $this, 'disable_comments_block_feed' ), 1);
 
         // Frontend filters.
         add_filter('comments_open', array( $this, 'disable_comments_status' ), 20, 2);
@@ -108,25 +116,43 @@ class ReallySimpleDisableComments
         add_filter('the_comments', array( $this, 'disable_dashboard_recent_comments' ), 10, 2);
 
         // Frontend UI.
-        add_action('wp_head', array( $this, 'disable_comments_hide_ui' ));
+        add_action('wp_enqueue_scripts', array( $this, 'disable_comments_hide_ui' ));
 
         // Disable Gutenberg block comments.
         add_action('init', array( $this, 'disable_block_comments' ));
         add_filter('register_block_type_args', array( $this, 'disable_comment_block_inserter' ), 10, 2);
+        add_filter('render_block', array( $this, 'disable_comments_render_block' ), 10, 2);
     }
 
     /**
      * Get the list of comment-related block types.
      *
+     * Includes the legacy `core/post-comments` block, which WordPress still
+     * registers as a deprecated alias, so pre-6.1 content is covered too.
+     *
+     * The list is filtered once and then cached for the rest of the request,
+     * because `disable_comments_render_block()` consults it for every block on
+     * every page. Register `rsdc_comment_block_types` early, on `plugins_loaded`
+     * or on `init` before priority 10, so it is in place for the first lookup.
+     *
      * @return array
      * @since   0.3.0
+     * @version 0.5.0
+     * @filter  rsdc_comment_block_types Filters the comment-related block types.
      */
     private function get_comment_block_types()
     {
-        return array(
+        static $block_types = null;
+
+        if (null !== $block_types) {
+            return $block_types;
+        }
+
+        $defaults = array(
             'core/comments',
             'core/comments-query-loop',
             'core/comments-title',
+            'core/post-comments',
             'core/post-comments-form',
             'core/post-comments-link',
             'core/post-comments-count',
@@ -144,6 +170,12 @@ class ReallySimpleDisableComments
             'core/comments-pagination-numbers',
             'core/latest-comments',
         );
+
+        $filtered = apply_filters('rsdc_comment_block_types', $defaults);
+
+        $block_types = is_array($filtered) ? $filtered : $defaults;
+
+        return $block_types;
     }
 
     /**
@@ -248,24 +280,112 @@ class ReallySimpleDisableComments
     /**
      * Remove comment-related REST API endpoints.
      *
-     * Unsets `/wp/v2/comments` and `/wp/v2/comments/<id>` so the endpoints
-     * return a 404 rest_no_route response instead of comment data.
+     * WordPress 7.1 serves editorial Notes through the same controller as
+     * public comments, so the routes are left registered by default and
+     * policed by `disable_comments_rest_gate()` instead. When editorial Notes
+     * are switched off via `rsdc_allow_editorial_notes`, the routes are
+     * unregistered outright, as they were before 0.5.0.
      *
      * @param  array $endpoints Registered REST API endpoints.
      * @return array
      * @since  0.4.0
+     * @version 0.5.0
      * @filter rest_endpoints
      * @filter rsdc_rest_endpoints Allows developers to modify the endpoint list after removal.
      */
     public function disable_comments_rest_endpoints($endpoints)
     {
-        unset($endpoints['/wp/v2/comments']);
+        if (! $this->allow_editorial_notes()) {
+            unset($endpoints['/wp/v2/comments']);
 
-        if (isset($endpoints['/wp/v2/comments/(?P<id>[\d]+)'])) {
-            unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
+            if (isset($endpoints['/wp/v2/comments/(?P<id>[\d]+)'])) {
+                unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
+            }
         }
 
         return apply_filters('rsdc_rest_endpoints', $endpoints);
+    }
+
+    /**
+     * Allow only editorial Note traffic through the comments REST route.
+     *
+     * WordPress 7.1 added editorial Notes, stored as comments with
+     * `comment_type` of `note` and served through the same REST controller as
+     * public comments. This gate keeps the route available for Notes while
+     * returning the same `rest_no_route` 404 that earlier versions returned by
+     * unregistering the route entirely.
+     *
+     * Requests are denied by default: the collection route must ask for
+     * `type=note` explicitly (core defaults that parameter to `comment`), and
+     * single-item requests must resolve to a comment whose type is `note`.
+     *
+     * @param  WP_REST_Response|WP_HTTP_Response|WP_Error|mixed $response Current response.
+     * @param  array                                            $handler  Matched route handler.
+     * @param  WP_REST_Request                                  $request  Current request.
+     * @return WP_REST_Response|WP_HTTP_Response|WP_Error|mixed
+     * @since  0.5.0
+     * @filter rest_request_before_callbacks
+     */
+    public function disable_comments_rest_gate($response, $handler, $request)
+    {
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        if (! $this->allow_editorial_notes()) {
+            return $response;
+        }
+
+        if (! $request instanceof WP_REST_Request) {
+            return $response;
+        }
+
+        if (! preg_match('#^/wp/v2/comments(?:/(\d+))?$#i', $request->get_route(), $matches)) {
+            return $response;
+        }
+
+        $comment_id = isset($matches[1]) ? (int) $matches[1] : 0;
+
+        if ($this->is_editorial_note_request($request, $comment_id)) {
+            return $response;
+        }
+
+        return new WP_Error(
+            'rest_no_route',
+            __('No route was found matching the URL and request method.', 'really-simple-disable-comments'),
+            array( 'status' => 404 )
+        );
+    }
+
+    /**
+     * Determine whether a comments REST request targets an editorial Note.
+     *
+     * @param  WP_REST_Request $request    Current request.
+     * @param  int             $comment_id Comment ID from the route, or 0 for the collection route.
+     * @return bool
+     * @since  0.5.0
+     */
+    private function is_editorial_note_request($request, $comment_id)
+    {
+        if ($comment_id > 0) {
+            $comment = get_comment($comment_id);
+
+            return ($comment instanceof WP_Comment) && 'note' === $comment->comment_type;
+        }
+
+        return 'note' === $request->get_param('type');
+    }
+
+    /**
+     * Whether editorial Notes are allowed through the comments REST route.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_allow_editorial_notes Set to false to restore pre-0.5.0 behavior.
+     */
+    private function allow_editorial_notes()
+    {
+        return (bool) apply_filters('rsdc_allow_editorial_notes', true);
     }
 
     /**
@@ -305,6 +425,73 @@ class ReallySimpleDisableComments
         }
 
         return $headers;
+    }
+
+    /**
+     * Hide comment feed autodiscovery links.
+     *
+     * Covers both the site-wide comments feed link emitted by `feed_links()`
+     * and the per-post comments feed link emitted by `feed_links_extra()`.
+     * Core defaults the second filter to the result of the first, but a theme
+     * or plugin can set them independently, so both are hooked.
+     *
+     * @param  bool $show Whether core intends to show the link.
+     * @return bool
+     * @since  0.5.0
+     * @filter feed_links_show_comments_feed
+     * @filter feed_links_extra_show_post_comments_feed
+     */
+    public function disable_comments_feed_links($show)
+    {
+        if (! $this->disable_comment_feeds()) {
+            return $show;
+        }
+
+        return false;
+    }
+
+    /**
+     * Return 404 for comment feeds.
+     *
+     * Removing the autodiscovery links is not enough on its own: the feed URLs
+     * are guessable and may already be indexed, and the comment feed template
+     * queries comments directly rather than honoring `comments_open`.
+     *
+     * @return void
+     * @since  0.5.0
+     * @action template_redirect
+     */
+    public function disable_comments_block_feed()
+    {
+        if (! $this->disable_comment_feeds()) {
+            return;
+        }
+
+        if (! is_comment_feed()) {
+            return;
+        }
+
+        global $wp_query;
+
+        if ($wp_query instanceof WP_Query) {
+            $wp_query->set_404();
+        }
+
+        status_header(404);
+        nocache_headers();
+        exit;
+    }
+
+    /**
+     * Whether comment feeds should be disabled.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_disable_comment_feeds Set to false to leave comment feeds alone.
+     */
+    private function disable_comment_feeds()
+    {
+        return (bool) apply_filters('rsdc_disable_comment_feeds', true);
     }
 
     /**
@@ -517,6 +704,53 @@ class ReallySimpleDisableComments
 
         wp_add_inline_style('really-simple-disable-comments', $styles);
         wp_enqueue_style('really-simple-disable-comments');
+    }
+
+    /**
+     * Return empty output for comment-related blocks.
+     *
+     * Block themes never call `comments_template()`, so the `comments_array`
+     * filter never runs for them, and `comments_open()` returning false does
+     * not stop WordPress rendering pre-existing comments. Without this, the
+     * comment markup is merely hidden with CSS while commenter names, comment
+     * text and avatar URLs still ship in the page source.
+     *
+     * Reuses `get_comment_block_types()` so this stays in sync with the
+     * inserter filter.
+     *
+     * @param  string $block_content Rendered block HTML.
+     * @param  array  $block         Parsed block.
+     * @return string
+     * @since  0.5.0
+     * @filter render_block
+     */
+    public function disable_comments_render_block($block_content, $block)
+    {
+        if (! isset($block['blockName'])) {
+            return $block_content;
+        }
+
+        if (! in_array($block['blockName'], $this->get_comment_block_types(), true)) {
+            return $block_content;
+        }
+
+        if (! $this->disable_comment_block_output()) {
+            return $block_content;
+        }
+
+        return '';
+    }
+
+    /**
+     * Whether comment block output should be suppressed.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_disable_comment_block_output Set to false to let comment blocks render.
+     */
+    private function disable_comment_block_output()
+    {
+        return (bool) apply_filters('rsdc_disable_comment_block_output', true);
     }
 
     /**
