@@ -716,15 +716,15 @@ class ReallySimpleDisableComments
      */
     public function disable_comments_render_block($block_content, $block)
     {
-        if (! $this->disable_comment_block_output()) {
-            return $block_content;
-        }
-
         if (! isset($block['blockName'])) {
             return $block_content;
         }
 
         if (! in_array($block['blockName'], $this->get_comment_block_types(), true)) {
+            return $block_content;
+        }
+
+        if (! $this->disable_comment_block_output()) {
             return $block_content;
         }
 
