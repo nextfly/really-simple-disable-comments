@@ -119,6 +119,7 @@ class ReallySimpleDisableComments
         // Disable Gutenberg block comments.
         add_action('init', array( $this, 'disable_block_comments' ));
         add_filter('register_block_type_args', array( $this, 'disable_comment_block_inserter' ), 10, 2);
+        add_filter('render_block', array( $this, 'disable_comments_render_block' ), 10, 2);
     }
 
     /**
@@ -678,6 +679,53 @@ class ReallySimpleDisableComments
 
         wp_add_inline_style('really-simple-disable-comments', $styles);
         wp_enqueue_style('really-simple-disable-comments');
+    }
+
+    /**
+     * Return empty output for comment-related blocks.
+     *
+     * Block themes never call `comments_template()`, so the `comments_array`
+     * filter never runs for them, and `comments_open()` returning false does
+     * not stop WordPress rendering pre-existing comments. Without this, the
+     * comment markup is merely hidden with CSS while commenter names, comment
+     * text and avatar URLs still ship in the page source.
+     *
+     * Reuses `get_comment_block_types()` so this stays in sync with the
+     * inserter filter.
+     *
+     * @param  string $block_content Rendered block HTML.
+     * @param  array  $block         Parsed block.
+     * @return string
+     * @since  0.5.0
+     * @filter render_block
+     */
+    public function disable_comments_render_block($block_content, $block)
+    {
+        if (! $this->disable_comment_block_output()) {
+            return $block_content;
+        }
+
+        if (! isset($block['blockName'])) {
+            return $block_content;
+        }
+
+        if (! in_array($block['blockName'], $this->get_comment_block_types(), true)) {
+            return $block_content;
+        }
+
+        return '';
+    }
+
+    /**
+     * Whether comment block output should be suppressed.
+     *
+     * @return bool
+     * @since  0.5.0
+     * @filter rsdc_disable_comment_block_output Set to false to let comment blocks render.
+     */
+    private function disable_comment_block_output()
+    {
+        return (bool) apply_filters('rsdc_disable_comment_block_output', true);
     }
 
     /**
