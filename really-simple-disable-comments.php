@@ -330,7 +330,7 @@ class ReallySimpleDisableComments
             return $response;
         }
 
-        if (! preg_match('#^/wp/v2/comments(?:/(\d+))?$#', $request->get_route(), $matches)) {
+        if (! preg_match('#^/wp/v2/comments(?:/(\d+))?$#i', $request->get_route(), $matches)) {
             return $response;
         }
 
