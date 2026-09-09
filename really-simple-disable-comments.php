@@ -130,9 +130,15 @@ class ReallySimpleDisableComments
      * Includes the legacy `core/post-comments` block, which WordPress still
      * registers as a deprecated alias, so pre-6.1 content is covered too.
      *
+     * The list is filtered once and then cached for the rest of the request,
+     * because `disable_comments_render_block()` consults it for every block on
+     * every page. Register `rsdc_comment_block_types` early, on `plugins_loaded`
+     * or on `init` before priority 10, so it is in place for the first lookup.
+     *
      * @return array
      * @since   0.3.0
      * @version 0.5.0
+     * @filter  rsdc_comment_block_types Filters the comment-related block types.
      */
     private function get_comment_block_types()
     {
@@ -142,7 +148,7 @@ class ReallySimpleDisableComments
             return $block_types;
         }
 
-        $block_types = array(
+        $defaults = array(
             'core/comments',
             'core/comments-query-loop',
             'core/comments-title',
@@ -164,6 +170,10 @@ class ReallySimpleDisableComments
             'core/comments-pagination-numbers',
             'core/latest-comments',
         );
+
+        $filtered = apply_filters('rsdc_comment_block_types', $defaults);
+
+        $block_types = is_array($filtered) ? $filtered : $defaults;
 
         return $block_types;
     }

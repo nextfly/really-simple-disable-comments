@@ -56,12 +56,13 @@ The plugin includes various filters and actions for developers to customize its 
 * `rsdc_block_editor_settings` - Filter the block editor settings
 * `rsdc_allowed_blocks` - Filter the allowed Gutenberg blocks
 * `rsdc_block_comment_submission` - Control whether direct comment submission is blocked (return false to allow)
-* `rsdc_rest_endpoints` - Filter the REST endpoints array after comment endpoints are removed
+* `rsdc_rest_endpoints` - Filter the REST endpoints array during REST bootstrap (comment endpoints are only unset when `rsdc_allow_editorial_notes` returns false)
 * `rsdc_xmlrpc_methods` - Filter the XML-RPC methods array after pingback methods are removed
 * `rsdc_rest_post_response` - Filter the normalized WP_REST_Response for post objects
 * `rsdc_allow_editorial_notes` - Return false to unregister the comment REST routes entirely, as in 0.4.0 (also disables WordPress 7.1 editorial Notes)
 * `rsdc_disable_comment_feeds` - Return false to leave comment feeds and their autodiscovery links alone
 * `rsdc_disable_comment_block_output` - Return false to let comment-related blocks render their markup again
+* `rsdc_comment_block_types` - Filter the list of comment-related block types the plugin hides and suppresses (register it on `plugins_loaded` so it applies before the first lookup)
 
 == Installation ==
 
@@ -85,7 +86,7 @@ No, the plugin is very lightweight and only adds the necessary hooks to disable 
 
 = Does this break WordPress 7.1 editorial Notes? =
 
-No. Editorial Notes are private annotations collaborators leave on a post, and WordPress serves them over the same REST route as public comments. The plugin keeps that route available for Notes only, so Notes keep working while public comment data stays blocked. Use the `rsdc_allow_editorial_notes` filter to turn Notes off as well.
+No. Editorial Notes are private annotations collaborators leave on a post, and WordPress serves them over the same REST route as public comments. The plugin keeps that route available for Notes only, so Notes keep working while public comment data stays blocked. Use the `rsdc_allow_editorial_notes` filter to turn Notes off as well. The route itself stays registered, so it is still listed at `/wp-json/wp/v2` and still answers `OPTIONS` with the comment schema; every request that is not Note traffic gets the same `404 rest_no_route` as before.
 
 = What happens to my comment feeds? =
 
@@ -102,7 +103,7 @@ On block themes the plugin now stops comment blocks producing output at all, rat
 * Stop comment-related blocks rendering at all, so commenter names, comment text and avatar URLs no longer appear in the page source on block themes
 * Comment feeds (/comments/feed/ and per-post comment feeds) now return 404, and their autodiscovery links are removed from <head>
 * Keep /wp/v2/comments registered so WordPress 7.1 editorial Notes keep working, while all other comment REST reads and writes still return 404 rest_no_route
-* Added developer filters: rsdc_allow_editorial_notes, rsdc_disable_comment_feeds, rsdc_disable_comment_block_output
+* Added developer filters: rsdc_allow_editorial_notes, rsdc_disable_comment_feeds, rsdc_disable_comment_block_output, rsdc_comment_block_types
 
 = 0.4.0 =
 * Block direct comment submission to wp-comments-post.php with a 403 response
